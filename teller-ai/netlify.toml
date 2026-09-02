@@ -2,5 +2,13 @@
   command = "npm run build"
   publish = ".next"
 
+[build.environment]
+  # AI_API_KEY and AI_API_BASE_URL are only ever read from process.env in
+  # server-side code (lib/ai.ts / app/api/chat/route.ts) and are never
+  # committed to the repo. Netlify's secrets scanner flags their values in
+  # the build output as a false positive; this omits just those two keys
+  # from the scan instead of disabling scanning entirely.
+  SECRETS_SCAN_OMIT_KEYS = "AI_API_KEY,AI_API_BASE_URL"
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
