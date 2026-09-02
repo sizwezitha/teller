@@ -1,14 +1,34 @@
 import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
+    const body = await req.json();
+    const { plan } = body;
+
+    let priceId: string | undefined;
+
+    if (plan === "pro") {
+      priceId = process.env.STRIPE_PRO_PRICE_ID;
+    }
+
+    if (plan === "business") {
+      priceId = process.env.STRIPE_BUSINESS_PRICE_ID;
+    }
+
+    if (!priceId) {
+      return NextResponse.json(
+        { error: "Invalid plan selected." },
+        { status: 400 }
+      );
+    }
+
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
       line_items: [
         {
-          price: process.env.NEXT_PUBLIC_STRIPE_PRO_PRICE_ID,
+          price: priceId,
           quantity: 1,
         },
       ],

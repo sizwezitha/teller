@@ -19,14 +19,23 @@ You should:
 export async function callTellerAI(
   messages: { role: string; content: string }[]
 ) {
-  const response = await fetch(process.env.AI_API_BASE_URL as string, {
+  const model = process.env.AI_MODEL;
+  const baseUrl = process.env.AI_API_BASE_URL ||
+    "https://api.openrouter.ai/v1/chat/completions";
+  const apiKey = process.env.AI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error("AI API key is not set (AI_API_KEY).");
+  }
+
+  const response = await fetch(baseUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${process.env.AI_API_KEY}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: JSON.stringify({
-      model: process.env.AI_MODEL,
+      model,
       messages: [
         {
           role: "system",
@@ -40,13 +49,14 @@ export async function callTellerAI(
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(error);
+    throw new Error(error || "AI provider error");
   }
 
   const data = await response.json();
 
+  // Support both chat response shapes
   return (
-    data.choices?.[0]?.message?.content ||
+    data.choices?.[0]?.message?.content || data.choices?.[0]?.text ||
     "Sorry, I could not generate a response."
   );
 }
