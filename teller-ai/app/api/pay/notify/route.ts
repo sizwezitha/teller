@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 
 import { generatePayfastSignature } from "@/lib/payfast";
 
+import { supabaseAdmin } from "@/lib/supabase";
+
 export async function POST(req: Request) {
   try {
     const payload = await req.formData();
@@ -30,6 +32,30 @@ export async function POST(req: Request) {
       String(fields.signature).toUpperCase() !== expectedSignature
     ) {
       return NextResponse.json({ ok: false }, { status: 400 });
+    }
+
+    const planName =
+      fields.custom_str1 === "business"
+        ? "business"
+        : fields.custom_str1 === "pro"
+          ? "pro"
+          : "free";
+
+    const userEmail = fields.custom_str2 || fields.email_address || null;
+
+    if (planName !== "free" && userEmail) {
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("id")
+        .eq("email", userEmail)
+        .maybeSingle();
+
+      if (profile?.id) {
+        await supabaseAdmin
+          .from("profiles")
+          .update({ plan: planName, updated_at: new Date().toISOString() })
+          .eq("id", profile.id);
+      }
     }
 
     return NextResponse.json({ ok: true, status: fields.payment_status || "OK" });

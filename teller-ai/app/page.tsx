@@ -17,12 +17,19 @@ export default function HomePage() {
           questions faster with a clean AI chat experience.
         </p>
 
-        <div className="mt-8 flex gap-4">
+        <div className="mt-8 flex flex-wrap justify-center gap-4">
           <Link
             href="/chat"
             className="rounded-lg bg-neutral-950 px-6 py-3 font-semibold text-white hover:bg-neutral-800"
           >
             Start Chatting
+          </Link>
+
+          <Link
+            href="/login"
+            className="rounded-lg border border-neutral-300 bg-white px-6 py-3 font-semibold text-neutral-950 hover:bg-neutral-50"
+          >
+            Log in
           </Link>
 
           <Link
