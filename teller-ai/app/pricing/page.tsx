@@ -82,7 +82,7 @@ function PricingCard({
     try {
       setLoading(true);
 
-      const response = await fetch("/api/stripe/create-checkout-session", {
+      const response = await fetch("/api/pay", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
