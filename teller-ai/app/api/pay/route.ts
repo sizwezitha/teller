@@ -24,7 +24,6 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const plan = body?.plan;
-    const userEmail = body?.userEmail || body?.email || null;
     const selectedPlan = planConfig[plan as keyof typeof planConfig];
 
     if (!selectedPlan) {
@@ -75,11 +74,6 @@ export async function POST(req: Request) {
     url.searchParams.set("cancel_url", cancelUrl);
     url.searchParams.set("notify_url", notifyUrl);
     url.searchParams.set("email_confirmation", "1");
-    url.searchParams.set("custom_str1", plan);
-    if (userEmail) {
-      url.searchParams.set("email_address", userEmail);
-      url.searchParams.set("custom_str2", userEmail);
-    }
     url.searchParams.set("signature", signature);
 
     return NextResponse.json({ url: url.toString() });

@@ -3,8 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import { supabase } from "@/lib/auth";
-
 export default function PricingPage() {
   return (
     <main className="min-h-screen bg-white px-6 py-20 text-neutral-950">
@@ -81,29 +79,15 @@ function PricingCard({
       return;
     }
 
-    if (!supabase) {
-      alert("Supabase is not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.");
-      return;
-    }
-
     try {
       setLoading(true);
-
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        router.push(`/login?next=/pricing`);
-        return;
-      }
 
       const response = await fetch("/api/pay", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ plan, email: session.user.email }),
+        body: JSON.stringify({ plan }),
       });
 
       const data = await response.json();
