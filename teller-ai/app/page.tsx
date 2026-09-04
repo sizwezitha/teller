@@ -1,8 +1,16 @@
 import Link from "next/link";
+import AuthButtons from "@/components/AuthButtons";
 
 export default function HomePage() {
   return (
     <main className="min-h-screen bg-white text-neutral-950">
+      <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-5">
+        <Link href="/" className="text-lg font-semibold text-neutral-950">
+          Teller AI
+        </Link>
+        <AuthButtons />
+      </header>
+
       <section className="mx-auto flex min-h-screen max-w-6xl flex-col items-center justify-center px-6 text-center">
         <div className="mb-6 rounded-full border border-neutral-300 bg-neutral-50 px-4 py-2 text-sm text-neutral-600">
           Introducing Teller AI
