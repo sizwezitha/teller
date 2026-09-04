@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import AuthButtons from "@/components/AuthButtons";
 import { DEFAULT_MODEL, SUPPORTED_MODELS } from "@/lib/models";
 
 type Message = {
@@ -133,21 +132,17 @@ export default function ChatWindow() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <AuthButtons />
-
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-950 outline-none focus:border-neutral-950"
-            >
-              {SUPPORTED_MODELS.map((model) => (
-                <option key={model.id} value={model.id}>
-                  {model.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="rounded-lg border border-neutral-300 bg-white px-3 py-2 text-sm text-neutral-950 outline-none focus:border-neutral-950"
+          >
+            {SUPPORTED_MODELS.map((model) => (
+              <option key={model.id} value={model.id}>
+                {model.name}
+              </option>
+            ))}
+          </select>
         </header>
 
         <div className="flex-1 overflow-y-auto bg-white p-4">
