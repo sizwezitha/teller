@@ -79,26 +79,10 @@ function PricingCard({
       return;
     }
 
+    // Redirect to PHP PayFast endpoint (server-side PHP should handle the request)
     try {
       setLoading(true);
-
-      const response = await fetch("/api/stripe/create-checkout-session", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ plan }),
-      });
-
-      const data = await response.json();
-
-      if (data.url) {
-        window.location.href = data.url;
-      } else {
-        alert(data.error || "Could not start checkout.");
-      }
-    } catch {
-      alert("Something went wrong. Please try again.");
+      window.location.href = `/pay.php?plan=${plan}`;
     } finally {
       setLoading(false);
     }
