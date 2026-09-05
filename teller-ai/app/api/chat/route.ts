@@ -1,8 +1,18 @@
 import { NextResponse } from "next/server";
 import { callTellerAI } from "@/lib/ai";
+import { requireVerifiedClerkToken } from "@/lib/clerk";
 
 export async function POST(req: Request) {
   try {
+    const verifiedToken = await requireVerifiedClerkToken(req);
+
+    if (!verifiedToken) {
+      return NextResponse.json(
+        { error: "Unauthorized. Please sign in first." },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const { messages, model } = body;
 

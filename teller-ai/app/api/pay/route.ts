@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { generatePayfastSignature } from "@/lib/payfast";
+import { requireVerifiedClerkToken } from "@/lib/clerk";
 
 const PAYFAST_URL =
   process.env.PAYFAST_URL || "https://www.payfast.co.za/eng/process";
@@ -22,6 +23,15 @@ const planConfig = {
 
 export async function POST(req: Request) {
   try {
+    const verifiedToken = await requireVerifiedClerkToken(req);
+
+    if (!verifiedToken) {
+      return NextResponse.json(
+        { error: "Unauthorized. Please sign in first." },
+        { status: 401 }
+      );
+    }
+
     const body = await req.json();
     const plan = body?.plan;
     const selectedPlan = planConfig[plan as keyof typeof planConfig];
