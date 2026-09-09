@@ -15,7 +15,24 @@ export async function POST(req: Request) {
 
     const reply = await callTellerAI(messages);
 
-    return NextResponse.json({ reply });
+      // Ask the AI for a short title summarizing the conversation
+      let title: string | null = null;
+      try {
+        const titlePrompt = `Please provide a concise title (no more than 6 words) that summarizes the conversation so far. Return ONLY the title on a single line.`;
+        const titleResult = await callTellerAI([
+          ...messages,
+          { role: "user", content: titlePrompt },
+        ]);
+
+        // sanitize titleResult to a single line and reasonable length
+        if (titleResult) {
+          title = titleResult.split("\n")[0].slice(0, 100).trim();
+        }
+      } catch (e) {
+        // ignore title errors
+      }
+
+      return NextResponse.json({ reply, title });
   } catch (error) {
     console.error("Chat API error:", error);
 
