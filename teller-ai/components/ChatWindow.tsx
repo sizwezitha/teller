@@ -38,6 +38,7 @@ export default function ChatWindow() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isHistoryVisible, setIsHistoryVisible] = useState(true);
   const [pendingFile, setPendingFile] = useState<Message["file"] | null>(null);
+  const [isProfileOpen, setIsProfileOpen] = useState(false);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -290,6 +291,11 @@ export default function ChatWindow() {
           </div>
 
           <div className="overflow-y-auto flex-1 space-y-2 text-sm text-neutral-400 modern-scroll">
+            <div className="mb-2 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-neutral-300">History</h3>
+              <span className="text-xs text-neutral-500">Showing {Math.min(histories.length, 6)}</span>
+            </div>
+
             {histories.length === 0 && <p>No chats yet</p>}
 
             {histories.slice(0, 6).map((h) => (
@@ -303,6 +309,25 @@ export default function ChatWindow() {
                 </div>
               </div>
             ))}
+          </div>
+          {/* Profile / user management at bottom */}
+          <div className="mt-4 border-t border-neutral-800 pt-3">
+            <button onClick={() => setIsProfileOpen((s) => !s)} className="flex w-full items-center gap-3 rounded-md px-3 py-2 hover:bg-neutral-800">
+              <div className="h-8 w-8 shrink-0 rounded-full bg-neutral-700 flex items-center justify-center text-sm">U</div>
+              <div className="min-w-0 text-left">
+                <div className="truncate text-white">User</div>
+                <div className="text-xs text-neutral-400">Manage account</div>
+              </div>
+              <div className="text-neutral-400">{isProfileOpen ? '▾' : '▸'}</div>
+            </button>
+
+            {isProfileOpen && (
+              <div className="mt-2 space-y-2 text-sm">
+                <button className="w-full text-left rounded px-3 py-2 hover:bg-neutral-800">Account settings</button>
+                <button className="w-full text-left rounded px-3 py-2 hover:bg-neutral-800">Switch account</button>
+                <button className="w-full text-left rounded px-3 py-2 hover:bg-neutral-800">Sign out</button>
+              </div>
+            )}
           </div>
         </div>
       </aside>
