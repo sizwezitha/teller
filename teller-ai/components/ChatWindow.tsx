@@ -291,11 +291,6 @@ export default function ChatWindow() {
           </div>
 
           <div className="overflow-y-auto flex-1 space-y-2 text-sm text-neutral-400 modern-scroll">
-            <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-neutral-300">History</h3>
-              <span className="text-xs text-neutral-500">Showing {Math.min(histories.length, 6)}</span>
-            </div>
-
             {histories.length === 0 && <p>No chats yet</p>}
 
             {histories.slice(0, 6).map((h) => (
