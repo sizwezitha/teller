@@ -5,6 +5,12 @@ import { useEffect, useRef, useState } from "react";
 type Message = {
   role: "user" | "assistant";
   content: string;
+  file?: {
+    name: string;
+    type: string;
+    size: number;
+    dataUrl: string;
+  } | null;
 };
 
 type HistoryItem = {
@@ -31,6 +37,7 @@ export default function ChatWindow() {
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isHistoryVisible, setIsHistoryVisible] = useState(true);
+  const [pendingFile, setPendingFile] = useState<Message["file"] | null>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -120,6 +127,34 @@ export default function ChatWindow() {
     setIsSidebarOpen(false);
   }
 
+  function deleteHistory(id: string) {
+    if (!confirm("Delete this conversation? This cannot be undone.")) return;
+    setHistories((prev) => {
+      const next = prev.filter((h) => h.id !== id);
+      try {
+        localStorage.setItem("teller_histories", JSON.stringify(next));
+      } catch (e) {}
+
+      // if deleted active, switch to first or create new
+      if (id === activeHistoryId) {
+        if (next.length) {
+          setActiveHistoryId(next[0].id);
+          setMessages(next[0].messages);
+        } else {
+          const newId = Date.now().toString();
+          const initialMessages: Message[] = [
+            { role: "assistant", content: "Hi, I’m Teller AI. Ask me anything — I can help with research, writing, business, coding, summaries, and ideas.", file: null },
+          ];
+          const newHist: HistoryItem = { id: newId, title: "New chat", messages: initialMessages, updatedAt: Date.now() };
+          setHistories([newHist]);
+          setActiveHistoryId(newId);
+          setMessages(initialMessages);
+        }
+      }
+      return next;
+    });
+  }
+
   function loadHistory(id: string) {
     const h = histories.find((x) => x.id === id);
     if (!h) return;
@@ -134,6 +169,7 @@ export default function ChatWindow() {
     const userMessage: Message = {
       role: "user",
       content: input,
+      file: pendingFile,
     };
 
     const updatedMessages = [...messages, userMessage];
@@ -149,14 +185,23 @@ export default function ChatWindow() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          messages: updatedMessages.map((msg) => ({ role: msg.role, content: msg.content })),
+          // include file data inline for the API if present
+          messages: updatedMessages.map((msg) => {
+            if (msg.file) {
+              return {
+                role: msg.role,
+                content: `File: ${msg.file.name} (${msg.file.type}; ${msg.file.size} bytes)\n${msg.file.dataUrl}\n${msg.content || ""}`,
+              };
+            }
+            return { role: msg.role, content: msg.content };
+          }),
         }),
       });
 
       const data = await response.json();
 
       if (data.reply) {
-        const assistantMessage: Message = { role: "assistant", content: data.reply };
+        const assistantMessage: Message = { role: "assistant", content: data.reply, file: null };
         setMessages([...updatedMessages, assistantMessage]);
 
         // If the server returned a suggested title, update the active history
@@ -213,12 +258,13 @@ export default function ChatWindow() {
           }
         }
       } else {
-        setMessages([...updatedMessages, { role: "assistant", content: "Sorry, something went wrong." }]);
+        setMessages([...updatedMessages, { role: "assistant", content: "Sorry, something went wrong.", file: null }]);
       }
     } catch (err) {
-      setMessages([...updatedMessages, { role: "assistant", content: "Network error. Please try again." }]);
+      setMessages([...updatedMessages, { role: "assistant", content: "Network error. Please try again.", file: null }]);
     } finally {
       setLoading(false);
+      setPendingFile(null);
     }
   }
 
@@ -238,17 +284,24 @@ export default function ChatWindow() {
               New Chat
             </button>
 
+            {/* file attach control moved to the input area (left of prompt) */}
+
             {/* Titles are generated automatically after the first assistant reply; removed manual button */}
           </div>
 
           <div className="overflow-y-auto flex-1 space-y-2 text-sm text-neutral-400 modern-scroll">
             {histories.length === 0 && <p>No chats yet</p>}
 
-            {histories.map((h) => (
-              <button key={h.id} onClick={() => loadHistory(h.id)} className={`block w-full text-left rounded-md px-3 py-2 hover:bg-neutral-800 ${h.id === activeHistoryId ? "bg-neutral-800" : ""}`}>
-                <div className="truncate text-white">{h.title}</div>
-                <div className="mt-1 text-xs text-neutral-400">{new Date(h.updatedAt).toLocaleString()}</div>
-              </button>
+            {histories.slice(0, 6).map((h) => (
+              <div key={h.id} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') loadHistory(h.id); }} onClick={() => loadHistory(h.id)} className={`flex items-center justify-between w-full rounded-md px-3 py-2 hover:bg-neutral-800 ${h.id === activeHistoryId ? "bg-neutral-800" : ""}`}>
+                <div className="min-w-0">
+                  <div className="truncate text-white">{h.title}</div>
+                  <div className="mt-1 text-xs text-neutral-400">{new Date(h.updatedAt).toLocaleString()}</div>
+                </div>
+                <div className="ml-2 flex-shrink-0">
+                  <button onClick={(e) => { e.stopPropagation(); deleteHistory(h.id); }} className="rounded px-2 py-1 text-xs bg-neutral-800">Delete</button>
+                </div>
+              </div>
             ))}
           </div>
         </div>
@@ -273,6 +326,16 @@ export default function ChatWindow() {
           <div className="mx-auto max-w-3xl space-y-4">
             {messages.map((message, index) => (
               <div key={index} className={`max-w-[85%] rounded-xl p-4 ${message.role === "user" ? "ml-auto bg-blue-600" : "mr-auto bg-neutral-800"}`}>
+                {message.file && (
+                  <div className="mb-2">
+                    {message.file.type.startsWith("image/") ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={message.file.dataUrl} alt={message.file.name} className="max-h-48 w-auto rounded" />
+                    ) : (
+                      <a href={message.file.dataUrl} download={message.file.name} className="underline">Download {message.file.name}</a>
+                    )}
+                  </div>
+                )}
                 <p className="whitespace-pre-wrap">{message.content}</p>
               </div>
             ))}
@@ -286,11 +349,31 @@ export default function ChatWindow() {
         </div>
 
         <div className="border-t border-neutral-800 p-4">
-          <div className="mx-auto flex max-w-3xl gap-2">
+          <div className="mx-auto flex max-w-3xl gap-2 items-center">
+            <label className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-800 text-xl cursor-pointer" title="Attach file">
+              <input type="file" className="hidden" onChange={async (e) => {
+                const f = e.target.files?.[0];
+                if (!f) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                  const dataUrl = reader.result as string;
+                  setPendingFile({ name: f.name, type: f.type, size: f.size, dataUrl });
+                };
+                reader.readAsDataURL(f);
+              }} />
+              📎
+            </label>
+
             <input className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-3 outline-none" placeholder="Ask Teller AI anything..." value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") sendMessage(); }} />
 
             <button onClick={sendMessage} disabled={loading} className="rounded-lg bg-white px-5 py-3 font-medium text-black disabled:opacity-50">Send</button>
           </div>
+          {pendingFile && (
+            <div className="mx-auto mt-2 flex max-w-3xl items-center text-sm text-neutral-300">
+              Attached: <span className="ml-2 truncate">{pendingFile.name}</span>
+              <button className="ml-3 rounded bg-neutral-800 px-2 py-1 text-xs" onClick={() => setPendingFile(null)}>Remove</button>
+            </div>
+          )}
         </div>
       </main>
     </div>
