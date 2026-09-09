@@ -333,9 +333,9 @@ export default function ChatWindow() {
         <header className="border-b border-neutral-800 p-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <button className="md:hidden rounded-md bg-neutral-800 px-3 py-2 text-sm" onClick={() => setIsSidebarOpen((s) => !s)} aria-label="Toggle sidebar">Menu</button>
-              <button className="hidden md:inline-flex items-center gap-2 rounded-md bg-neutral-800 px-3 py-2 text-sm" onClick={() => setIsHistoryVisible((v) => !v)} aria-label="Toggle history visibility">
-                {isHistoryVisible ? 'Hide history' : 'Show history'}
+              <button className="rounded-md bg-neutral-800 px-3 py-2 text-sm md:hidden" onClick={() => setIsSidebarOpen((s) => !s)} aria-label="Toggle sidebar">Menu</button>
+              <button className="hidden items-center gap-2 rounded-md bg-neutral-800 px-3 py-2 text-sm md:inline-flex" onClick={() => setIsHistoryVisible((v) => !v)} aria-label="Toggle history visibility">
+                Menu
               </button>
               <h2 className="text-lg font-semibold">Teller AI Chat</h2>
             </div>
@@ -369,24 +369,26 @@ export default function ChatWindow() {
         </div>
 
         <div className="border-t border-neutral-800 p-4">
-          <div className="mx-auto flex max-w-3xl gap-2 items-center">
-            <label className="flex h-10 w-10 items-center justify-center rounded-lg bg-neutral-800 text-xl cursor-pointer" title="Attach file">
-              <input type="file" className="hidden" onChange={async (e) => {
-                const f = e.target.files?.[0];
-                if (!f) return;
-                const reader = new FileReader();
-                reader.onload = () => {
-                  const dataUrl = reader.result as string;
-                  setPendingFile({ name: f.name, type: f.type, size: f.size, dataUrl });
-                };
-                reader.readAsDataURL(f);
-              }} />
-              📎
-            </label>
+          <div className="mx-auto max-w-3xl">
+            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+              <label className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-neutral-800 text-xl" title="Attach file">
+                <input type="file" className="hidden" onChange={async (e) => {
+                  const f = e.target.files?.[0];
+                  if (!f) return;
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    const dataUrl = reader.result as string;
+                    setPendingFile({ name: f.name, type: f.type, size: f.size, dataUrl });
+                  };
+                  reader.readAsDataURL(f);
+                }} />
+                📎
+              </label>
 
-            <input className="flex-1 rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-3 outline-none" placeholder="Ask Teller AI anything..." value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") sendMessage(); }} />
+              <input className="min-w-0 rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-3 outline-none" placeholder="Ask Teller AI anything..." value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") sendMessage(); }} />
 
-            <button onClick={sendMessage} disabled={loading} className="rounded-lg bg-white px-5 py-3 font-medium text-black disabled:opacity-50">Send</button>
+              <button onClick={sendMessage} disabled={loading} className="shrink-0 rounded-lg bg-white px-5 py-3 font-medium text-black disabled:opacity-50">Send</button>
+            </div>
           </div>
           {pendingFile && (
             <div className="mx-auto mt-2 flex max-w-3xl items-center text-sm text-neutral-300">
