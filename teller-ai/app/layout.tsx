@@ -16,12 +16,14 @@ export const metadata: Metadata = {
   title: "Teller AI",
   description: "Teller AI — conversational assistant for research, writing, and coding",
   icons: {
-    icon: "/jupiter-black.svg",
+    icon: "/icon.svg",
+    shortcut: "/icon.svg",
+    apple: "/icon.svg",
   },
   openGraph: {
     title: "Teller AI",
     description: "Teller AI — conversational assistant for research, writing, and coding",
-    images: "/jupiter-black.svg",
+    images: "/icon.svg",
   },
 };
 
