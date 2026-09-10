@@ -80,8 +80,9 @@ export default function ChatWindow() {
     setHistories((prev) => {
       const next = prev.slice();
       const idx = next.findIndex((h) => h.id === activeHistoryId);
-      const existing = prev.find((h) => h.id === activeHistoryId);
       const titleFromUser = messages.find((m) => m.role === "user")?.content?.slice(0, 60) || "New chat";
+      // If there's an existing non-default title (likely AI-generated), preserve it.
+      const existing = prev.find((h) => h.id === activeHistoryId);
       const finalTitle = existing && existing.title && existing.title !== "New chat" ? existing.title : titleFromUser;
       const updated: HistoryItem = {
         id: activeHistoryId,
@@ -209,21 +210,17 @@ export default function ChatWindow() {
           setHistories((prev) => {
             const next = prev.slice();
             const idx = next.findIndex((h) => h.id === activeHistoryId);
-            const existing = idx === -1 ? null : next[idx];
-            const currentTitle = existing?.title;
-            const stableTitle = currentTitle && currentTitle !== "New chat" ? currentTitle : data.title;
-
             if (idx !== -1) {
               next[idx] = {
                 ...next[idx],
-                title: stableTitle,
+                title: data.title,
                 messages: [...updatedMessages, assistantMessage],
                 updatedAt: Date.now(),
               };
               const item = next.splice(idx, 1)[0];
               next.unshift(item);
             } else {
-              next.unshift({ id: activeHistoryId, title: stableTitle, messages: [...updatedMessages, assistantMessage], updatedAt: Date.now() });
+              next.unshift({ id: activeHistoryId, title: data.title, messages: [...updatedMessages, assistantMessage], updatedAt: Date.now() });
             }
             try {
               localStorage.setItem("teller_histories", JSON.stringify(next));
@@ -231,8 +228,7 @@ export default function ChatWindow() {
             return next;
           });
         } else if (activeHistoryId) {
-          // If the active history still has the default title, generate one now.
-          // Once an AI title exists, it should remain stable for the lifetime of the chat.
+          // If the active history still has the default title, generate one now
           const current = histories.find((h) => h.id === activeHistoryId);
           if (current && (!current.title || current.title === "New chat")) {
             (async () => {
@@ -248,9 +244,7 @@ export default function ChatWindow() {
                     const next = prev.slice();
                     const idx = next.findIndex((h) => h.id === activeHistoryId);
                     if (idx !== -1) {
-                      const existing = next[idx];
-                      const stableTitle = existing.title && existing.title !== "New chat" ? existing.title : d.title;
-                      next[idx] = { ...next[idx], title: stableTitle, messages: [...updatedMessages, { role: "assistant", content: data.reply }], updatedAt: Date.now() };
+                      next[idx] = { ...next[idx], title: d.title, messages: [...updatedMessages, { role: "assistant", content: data.reply }], updatedAt: Date.now() };
                       const item = next.splice(idx, 1)[0];
                       next.unshift(item);
                     }
