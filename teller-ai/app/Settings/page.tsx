@@ -3,7 +3,7 @@
 import { useAuth0 } from "@auth0/auth0-react";
 
 export default function SettingsPage() {
-  const { user, isAuthenticated, isLoading } = useAuth0();
+  const { user, isAuthenticated, isLoading, loginWithRedirect, logout } = useAuth0();
 
   const accountProfile = {
     name: user?.name || "Teller User",
@@ -66,6 +66,26 @@ export default function SettingsPage() {
               </label>
             </div>
           </section>
+
+          <div className="flex justify-end gap-3 pt-2">
+            {isAuthenticated ? (
+              <button
+                type="button"
+                onClick={() => logout({ logoutParams: { returnTo: typeof window !== "undefined" ? window.location.origin : undefined } })}
+                className="rounded-lg border border-neutral-700 bg-neutral-800 px-4 py-2 text-sm font-medium text-white"
+              >
+                Log out
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => loginWithRedirect()}
+                className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black"
+              >
+                Log in
+              </button>
+            )}
+          </div>
         </div>
       </div>
     </main>

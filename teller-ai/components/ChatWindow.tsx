@@ -40,7 +40,7 @@ export default function ChatWindow() {
   const [isHistoryVisible, setIsHistoryVisible] = useState(true);
   const [pendingFile, setPendingFile] = useState<Message["file"] | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const { user, isAuthenticated } = useAuth0();
+  const { user, isAuthenticated, isLoading: isAuthLoading, loginWithRedirect, logout } = useAuth0();
   const accountProfile = {
     name: user?.name || "Teller User",
     email: user?.email || "user@example.com",
@@ -322,25 +322,35 @@ export default function ChatWindow() {
           </div>
           {/* Profile / user management at bottom */}
           <div className="mt-4 border-t border-neutral-800 pt-3">
-            <button onClick={() => setIsProfileOpen((s) => !s)} className="flex w-full items-center gap-3 rounded-md px-3 py-2 hover:bg-neutral-800">
-              <img
-                src={accountProfile.picture}
-                alt={accountProfile.name}
-                className="h-8 w-8 shrink-0 rounded-full object-cover"
-              />
-              <div className="min-w-0 text-left">
-                <div className="truncate text-white">{accountProfile.name}</div>
-                <div className="text-xs text-neutral-400">{accountProfile.email}</div>
-              </div>
-              <div className="text-neutral-400">{isProfileOpen ? '▾' : '▸'}</div>
-            </button>
+            {isAuthLoading ? (
+              <div className="px-3 py-2 text-sm text-neutral-400">Loading account...</div>
+            ) : isAuthenticated ? (
+              <>
+                <button onClick={() => setIsProfileOpen((s) => !s)} className="flex w-full items-center gap-3 rounded-md px-3 py-2 hover:bg-neutral-800">
+                  <img
+                    src={accountProfile.picture}
+                    alt={accountProfile.name}
+                    className="h-8 w-8 shrink-0 rounded-full object-cover"
+                  />
+                  <div className="min-w-0 text-left">
+                    <div className="truncate text-white">{accountProfile.name}</div>
+                    <div className="text-xs text-neutral-400">{accountProfile.email}</div>
+                  </div>
+                  <div className="text-neutral-400">{isProfileOpen ? '▾' : '▸'}</div>
+                </button>
 
-            {isProfileOpen && (
-              <div className="mt-2 space-y-2 text-sm">
-                <button type="button" onClick={openUserPanel} className="w-full text-left rounded px-3 py-2 hover:bg-neutral-800">Account Settings</button>
-                <button type="button" className="w-full text-left rounded px-3 py-2 hover:bg-neutral-800">Switch account</button>
-                <button type="button" className="w-full text-left rounded px-3 py-2 hover:bg-neutral-800">Sign out</button>
-              </div>
+                {isProfileOpen && (
+                  <div className="mt-2 space-y-2 text-sm">
+                    <button type="button" onClick={openUserPanel} className="w-full rounded px-3 py-2 text-left hover:bg-neutral-800">Account Settings</button>
+                    <button type="button" onClick={() => loginWithRedirect()} className="w-full rounded px-3 py-2 text-left hover:bg-neutral-800">Switch account</button>
+                    <button type="button" onClick={() => logout({ logoutParams: { returnTo: typeof window !== "undefined" ? window.location.origin : undefined } })} className="w-full rounded px-3 py-2 text-left hover:bg-neutral-800">Log out</button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <button type="button" onClick={() => loginWithRedirect()} className="w-full rounded-md bg-white px-4 py-2 text-sm font-medium text-black">
+                Log in
+              </button>
             )}
           </div>
         </div>
