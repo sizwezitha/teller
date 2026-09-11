@@ -1,9 +1,15 @@
 "use client";
 
 import { useAuth0 } from "@auth0/auth0-react";
+import { useEffect, useState } from "react";
+
+const FREE_CHAT_LIMIT = 100;
 
 export default function SettingsPage() {
   const { user, isAuthenticated, isLoading, loginWithRedirect, logout } = useAuth0();
+  const accountId = user?.sub || user?.email || "guest";
+  const usageKey = `teller_usage:${accountId}:${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, "0")}`;
+  const [monthlyChatCount, setMonthlyChatCount] = useState(0);
 
   const accountProfile = {
     name: user?.name || "Teller User",
@@ -12,6 +18,11 @@ export default function SettingsPage() {
       user?.picture ||
       "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80",
   };
+
+  useEffect(() => {
+    const storedUsage = Number(localStorage.getItem(usageKey) || "0");
+    setMonthlyChatCount(Number.isFinite(storedUsage) ? storedUsage : 0);
+  }, [usageKey]);
 
   if (isLoading) {
     return <main className="min-h-screen bg-neutral-950 px-6 py-10 text-white">Loading account...</main>;
@@ -48,7 +59,11 @@ export default function SettingsPage() {
               </div>
               <div className="flex items-center justify-between">
                 <span>Plan</span>
-                <span className="text-neutral-100">{isAuthenticated ? "Pro" : "Guest"}</span>
+                <span className="text-neutral-100">Free</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span>Chats this month</span>
+                <span className="text-neutral-100">{monthlyChatCount}/{FREE_CHAT_LIMIT}</span>
               </div>
             </div>
           </section>

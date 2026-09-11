@@ -21,6 +21,13 @@ type HistoryItem = {
   updatedAt: number;
 };
 
+const FREE_CHAT_LIMIT = 100;
+
+function getUsageMonth() {
+  const now = new Date();
+  return `${now.getUTCFullYear()}-${String(now.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
 export default function ChatWindow() {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -41,6 +48,10 @@ export default function ChatWindow() {
   const [pendingFile, setPendingFile] = useState<Message["file"] | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { user, isAuthenticated, isLoading: isAuthLoading, loginWithRedirect, logout } = useAuth0();
+  const accountId = user?.sub || user?.email || "guest";
+  const historyStorageKey = `teller_histories:${accountId}`;
+  const usageStorageKey = `teller_usage:${accountId}:${getUsageMonth()}`;
+  const [monthlyChatCount, setMonthlyChatCount] = useState(0);
   const accountProfile = {
     name: user?.name || "Teller User",
     email: user?.email || "user@example.com",
@@ -54,10 +65,23 @@ export default function ChatWindow() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // Load histories from localStorage on mount
+  // Load only the current account's histories and monthly usage.
   useEffect(() => {
+    if (isAuthLoading) return;
+
     try {
-      const raw = localStorage.getItem("teller_histories");
+      setActiveHistoryId(null);
+      setMessages([
+        {
+          role: "assistant",
+          content:
+            "Hi, I’m Teller AI. Ask me anything — I can help with research, writing, business, coding, summaries, and ideas.",
+        },
+      ]);
+      const raw = localStorage.getItem(historyStorageKey);
+      const storedUsage = Number(localStorage.getItem(usageStorageKey) || "0");
+      setMonthlyChatCount(Number.isFinite(storedUsage) ? storedUsage : 0);
+
       if (raw) {
         const parsed: HistoryItem[] = JSON.parse(raw);
         const sorted = parsed.sort((a, b) => b.updatedAt - a.updatedAt);
@@ -70,19 +94,27 @@ export default function ChatWindow() {
       }
 
       // initialize with default assistant message as a new history
+      const initialMessages: Message[] = [
+        {
+          role: "assistant",
+          content:
+            "Hi, I’m Teller AI. Ask me anything — I can help with research, writing, business, coding, summaries, and ideas.",
+        },
+      ];
       const id = Date.now().toString();
       const initial: HistoryItem = {
         id,
         title: "New chat",
-        messages: messages,
+        messages: initialMessages,
         updatedAt: Date.now(),
       };
       setHistories([initial]);
       setActiveHistoryId(id);
+      setMessages(initialMessages);
+      localStorage.setItem(historyStorageKey, JSON.stringify([initial]));
       // eslint-disable-next-line no-empty
     } catch (e) {}
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [historyStorageKey, isAuthLoading, usageStorageKey]);
 
   // Persist active history whenever messages change
   useEffect(() => {
@@ -107,11 +139,11 @@ export default function ChatWindow() {
         next.unshift(updated);
       }
       try {
-        localStorage.setItem("teller_histories", JSON.stringify(next));
+        localStorage.setItem(historyStorageKey, JSON.stringify(next));
       } catch (e) {}
       return next;
     });
-  }, [messages, activeHistoryId]);
+  }, [messages, activeHistoryId, historyStorageKey]);
 
   function createNewChat() {
     const id = Date.now().toString();
@@ -133,7 +165,7 @@ export default function ChatWindow() {
     setActiveHistoryId(id);
     setMessages(initialMessages);
     try {
-      localStorage.setItem("teller_histories", JSON.stringify(next));
+      localStorage.setItem(historyStorageKey, JSON.stringify(next));
     } catch (e) {}
     setIsSidebarOpen(false);
   }
@@ -148,7 +180,7 @@ export default function ChatWindow() {
     setHistories((prev) => {
       const next = prev.filter((h) => h.id !== id);
       try {
-        localStorage.setItem("teller_histories", JSON.stringify(next));
+        localStorage.setItem(historyStorageKey, JSON.stringify(next));
       } catch (e) {}
 
       // if deleted active, switch to first or create new
@@ -181,6 +213,7 @@ export default function ChatWindow() {
 
   async function sendMessage() {
     if (!input.trim()) return;
+    if (monthlyChatCount >= FREE_CHAT_LIMIT) return;
 
     const userMessage: Message = {
       role: "user",
@@ -193,6 +226,9 @@ export default function ChatWindow() {
     setMessages(updatedMessages);
     setInput("");
     setLoading(true);
+    const nextMonthlyChatCount = monthlyChatCount + 1;
+    setMonthlyChatCount(nextMonthlyChatCount);
+    localStorage.setItem(usageStorageKey, String(nextMonthlyChatCount));
 
     try {
       const response = await fetch("/api/chat", {
@@ -238,7 +274,7 @@ export default function ChatWindow() {
               next.unshift({ id: activeHistoryId, title: data.title, messages: [...updatedMessages, assistantMessage], updatedAt: Date.now() });
             }
             try {
-              localStorage.setItem("teller_histories", JSON.stringify(next));
+              localStorage.setItem(historyStorageKey, JSON.stringify(next));
             } catch (e) {}
             return next;
           });
@@ -264,7 +300,7 @@ export default function ChatWindow() {
                       next.unshift(item);
                     }
                     try {
-                      localStorage.setItem("teller_histories", JSON.stringify(next));
+                      localStorage.setItem(historyStorageKey, JSON.stringify(next));
                     } catch (e) {}
                     return next;
                   });
@@ -305,21 +341,23 @@ export default function ChatWindow() {
             {/* Titles are generated automatically after the first assistant reply; removed manual button */}
           </div>
 
-          <div className="overflow-y-auto flex-1 space-y-2 text-sm text-neutral-400 modern-scroll">
-            {histories.length === 0 && <p>No chats yet</p>}
+          {isAuthenticated && (
+            <div className="overflow-y-auto flex-1 space-y-2 text-sm text-neutral-400 modern-scroll">
+              {histories.length === 0 && <p>No chats yet</p>}
 
-            {histories.slice(0, 6).map((h) => (
-              <div key={h.id} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') loadHistory(h.id); }} onClick={() => loadHistory(h.id)} className={`flex items-center justify-between w-full rounded-md px-3 py-2 hover:bg-neutral-800 ${h.id === activeHistoryId ? "bg-neutral-800" : ""}`}>
-                <div className="min-w-0">
-                  <div className="truncate text-white">{h.title}</div>
-                  <div className="mt-1 text-xs text-neutral-400">{new Date(h.updatedAt).toLocaleString()}</div>
+              {histories.slice(0, 6).map((h) => (
+                <div key={h.id} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') loadHistory(h.id); }} onClick={() => loadHistory(h.id)} className={`flex items-center justify-between w-full rounded-md px-3 py-2 hover:bg-neutral-800 ${h.id === activeHistoryId ? "bg-neutral-800" : ""}`}>
+                  <div className="min-w-0">
+                    <div className="truncate text-white">{h.title}</div>
+                    <div className="mt-1 text-xs text-neutral-400">{new Date(h.updatedAt).toLocaleString()}</div>
+                  </div>
+                  <div className="ml-2 flex-shrink-0">
+                    <button onClick={(e) => { e.stopPropagation(); deleteHistory(h.id); }} className="rounded px-2 py-1 text-xs bg-neutral-800">Delete</button>
+                  </div>
                 </div>
-                <div className="ml-2 flex-shrink-0">
-                  <button onClick={(e) => { e.stopPropagation(); deleteHistory(h.id); }} className="rounded px-2 py-1 text-xs bg-neutral-800">Delete</button>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
           {/* Profile / user management at bottom */}
           <div className="mt-4 border-t border-neutral-800 pt-3">
             {isAuthLoading ? (
@@ -351,6 +389,11 @@ export default function ChatWindow() {
               <button type="button" onClick={() => loginWithRedirect()} className="w-full rounded-md bg-white px-4 py-2 text-sm font-medium text-black">
                 Log in
               </button>
+            )}
+            {isAuthenticated && (
+              <div className="mt-3 px-3 text-xs text-neutral-400">
+                Free plan: {monthlyChatCount}/{FREE_CHAT_LIMIT} chats this month
+              </div>
             )}
           </div>
         </div>
@@ -399,25 +442,31 @@ export default function ChatWindow() {
 
         <div className="border-t border-neutral-800 p-4">
           <div className="mx-auto max-w-3xl">
-            <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
-              <label className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-neutral-800 text-xl" title="Attach file">
-                <input type="file" className="hidden" onChange={async (e) => {
-                  const f = e.target.files?.[0];
-                  if (!f) return;
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    const dataUrl = reader.result as string;
-                    setPendingFile({ name: f.name, type: f.type, size: f.size, dataUrl });
-                  };
-                  reader.readAsDataURL(f);
-                }} />
-                📎
-              </label>
+            {isAuthenticated ? (
+              <div className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2">
+                <label className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-neutral-800 text-xl" title="Attach file">
+                  <input type="file" className="hidden" onChange={async (e) => {
+                    const f = e.target.files?.[0];
+                    if (!f) return;
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                      const dataUrl = reader.result as string;
+                      setPendingFile({ name: f.name, type: f.type, size: f.size, dataUrl });
+                    };
+                    reader.readAsDataURL(f);
+                  }} />
+                  📎
+                </label>
 
-              <input className="min-w-0 rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-3 outline-none" placeholder="Ask Teller AI anything..." value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") sendMessage(); }} />
+                <input className="min-w-0 rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-3 outline-none" placeholder="Ask Teller AI anything..." value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") sendMessage(); }} />
 
-              <button onClick={sendMessage} disabled={loading} className="shrink-0 rounded-lg bg-white px-5 py-3 font-medium text-black disabled:opacity-50">Send</button>
-            </div>
+                <button onClick={sendMessage} disabled={loading} className="shrink-0 rounded-lg bg-white px-5 py-3 font-medium text-black disabled:opacity-50">Send</button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => loginWithRedirect()} className="w-full rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-3 text-sm text-neutral-300 hover:bg-neutral-800">
+                Log in to attach files and send messages
+              </button>
+            )}
           </div>
           {pendingFile && (
             <div className="mx-auto mt-2 flex max-w-3xl items-center text-sm text-neutral-300">
