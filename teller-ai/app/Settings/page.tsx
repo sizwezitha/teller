@@ -9,7 +9,11 @@ export default function SettingsPage() {
   const { user, isAuthenticated, isLoading, loginWithRedirect, logout } = useAuth0();
   const accountId = user?.sub || user?.email || "guest";
   const usageKey = `teller_usage:${accountId}:${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, "0")}`;
+  const preferencesKey = `teller_preferences:${accountId}`;
   const [monthlyChatCount, setMonthlyChatCount] = useState(0);
+  const [aiResponsesEnabled, setAiResponsesEnabled] = useState(true);
+  const [autoScrollEnabled, setAutoScrollEnabled] = useState(true);
+  const [saveMessage, setSaveMessage] = useState("");
 
   const accountProfile = {
     name: user?.name || "Teller User",
@@ -23,6 +27,28 @@ export default function SettingsPage() {
     const storedUsage = Number(localStorage.getItem(usageKey) || "0");
     setMonthlyChatCount(Number.isFinite(storedUsage) ? storedUsage : 0);
   }, [usageKey]);
+
+  useEffect(() => {
+    try {
+      const storedPreferences = JSON.parse(localStorage.getItem(preferencesKey) || "null");
+      if (storedPreferences) {
+        setAiResponsesEnabled(storedPreferences.aiResponsesEnabled ?? true);
+        setAutoScrollEnabled(storedPreferences.autoScrollEnabled ?? true);
+      }
+    } catch {
+      setAiResponsesEnabled(true);
+      setAutoScrollEnabled(true);
+    }
+  }, [preferencesKey]);
+
+  function saveSettings() {
+    localStorage.setItem(
+      preferencesKey,
+      JSON.stringify({ aiResponsesEnabled, autoScrollEnabled }),
+    );
+    setSaveMessage("Settings saved");
+    window.setTimeout(() => setSaveMessage(""), 2500);
+  }
 
   if (isLoading) {
     return <main className="min-h-screen bg-neutral-950 px-6 py-10 text-white">Loading account...</main>;
@@ -73,16 +99,34 @@ export default function SettingsPage() {
             <div className="mt-4 space-y-3 text-sm text-neutral-300">
               <label className="flex items-center justify-between gap-4">
                 <span>AI responses in chat</span>
-                <input type="checkbox" defaultChecked className="h-4 w-4 accent-white" />
+                <input
+                  type="checkbox"
+                  checked={aiResponsesEnabled}
+                  onChange={(event) => setAiResponsesEnabled(event.target.checked)}
+                  className="h-4 w-4 accent-white"
+                />
               </label>
               <label className="flex items-center justify-between gap-4">
                 <span>Auto-scroll history</span>
-                <input type="checkbox" defaultChecked className="h-4 w-4 accent-white" />
+                <input
+                  type="checkbox"
+                  checked={autoScrollEnabled}
+                  onChange={(event) => setAutoScrollEnabled(event.target.checked)}
+                  className="h-4 w-4 accent-white"
+                />
               </label>
             </div>
           </section>
 
-          <div className="flex justify-end gap-3 pt-2">
+          <div className="flex items-center justify-end gap-3 pt-2">
+            {saveMessage && <span className="text-sm text-emerald-400">{saveMessage}</span>}
+            <button
+              type="button"
+              onClick={saveSettings}
+              className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black"
+            >
+              Save
+            </button>
             {isAuthenticated ? (
               <button
                 type="button"
