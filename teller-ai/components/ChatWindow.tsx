@@ -1,5 +1,6 @@
 "use client";
 
+import { useAuth0 } from "@auth0/auth0-react";
 import { useEffect, useRef, useState } from "react";
 
 type Message = {
@@ -39,6 +40,15 @@ export default function ChatWindow() {
   const [isHistoryVisible, setIsHistoryVisible] = useState(true);
   const [pendingFile, setPendingFile] = useState<Message["file"] | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const { user, isAuthenticated } = useAuth0();
+  const accountProfile = {
+    name: user?.name || "Teller User",
+    email: user?.email || "user@example.com",
+    picture:
+      user?.picture ||
+      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80",
+    isAuthenticated,
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -126,6 +136,11 @@ export default function ChatWindow() {
       localStorage.setItem("teller_histories", JSON.stringify(next));
     } catch (e) {}
     setIsSidebarOpen(false);
+  }
+
+  function openUserPanel() {
+    const userPanelUrl = `${window.location.origin}/Settings`;
+    window.open(userPanelUrl, "_blank", "noopener,noreferrer");
   }
 
   function deleteHistory(id: string) {
@@ -308,19 +323,23 @@ export default function ChatWindow() {
           {/* Profile / user management at bottom */}
           <div className="mt-4 border-t border-neutral-800 pt-3">
             <button onClick={() => setIsProfileOpen((s) => !s)} className="flex w-full items-center gap-3 rounded-md px-3 py-2 hover:bg-neutral-800">
-              <div className="h-8 w-8 shrink-0 rounded-full bg-neutral-700 flex items-center justify-center text-sm">U</div>
+              <img
+                src={accountProfile.picture}
+                alt={accountProfile.name}
+                className="h-8 w-8 shrink-0 rounded-full object-cover"
+              />
               <div className="min-w-0 text-left">
-                <div className="truncate text-white">User</div>
-                <div className="text-xs text-neutral-400">Manage account</div>
+                <div className="truncate text-white">{accountProfile.name}</div>
+                <div className="text-xs text-neutral-400">{accountProfile.email}</div>
               </div>
               <div className="text-neutral-400">{isProfileOpen ? '▾' : '▸'}</div>
             </button>
 
             {isProfileOpen && (
               <div className="mt-2 space-y-2 text-sm">
-                <button className="w-full text-left rounded px-3 py-2 hover:bg-neutral-800">Account settings</button>
-                <button className="w-full text-left rounded px-3 py-2 hover:bg-neutral-800">Switch account</button>
-                <button className="w-full text-left rounded px-3 py-2 hover:bg-neutral-800">Sign out</button>
+                <button type="button" onClick={openUserPanel} className="w-full text-left rounded px-3 py-2 hover:bg-neutral-800">Account Settings</button>
+                <button type="button" className="w-full text-left rounded px-3 py-2 hover:bg-neutral-800">Switch account</button>
+                <button type="button" className="w-full text-left rounded px-3 py-2 hover:bg-neutral-800">Sign out</button>
               </div>
             )}
           </div>

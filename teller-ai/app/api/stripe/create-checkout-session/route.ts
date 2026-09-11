@@ -2,6 +2,13 @@ import { NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 
 export async function POST() {
+  if (!stripe) {
+    return NextResponse.json(
+      { error: "Stripe is not configured." },
+      { status: 500 }
+    );
+  }
+
   try {
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",
