@@ -21,6 +21,8 @@ type HistoryItem = {
   updatedAt: number;
 };
 
+type Theme = "auto" | "dark" | "light";
+
 const FREE_CHAT_LIMIT = 100;
 
 function getUsageMonth() {
@@ -47,6 +49,8 @@ export default function ChatWindow() {
   const [isHistoryVisible, setIsHistoryVisible] = useState(true);
   const [pendingFile, setPendingFile] = useState<Message["file"] | null>(null);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
+  const [theme, setTheme] = useState<Theme>("auto");
+  const [isThemeMenuOpen, setIsThemeMenuOpen] = useState(false);
   const { user, isAuthenticated, isLoading: isAuthLoading, loginWithRedirect, logout } = useAuth0();
   const accountId = user?.sub || user?.email || "guest";
   const historyStorageKey = `teller_histories:${accountId}`;
@@ -64,6 +68,39 @@ export default function ChatWindow() {
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("teller_theme") as Theme | null;
+    if (savedTheme === "auto" || savedTheme === "dark" || savedTheme === "light") {
+      setTheme(savedTheme);
+    }
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem("teller_theme", theme);
+  }, [theme]);
+
+  function playReplySound() {
+    try {
+      const AudioContextClass = window.AudioContext ||
+        (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const audioContext = new AudioContextClass();
+      const oscillator = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(660, audioContext.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(880, audioContext.currentTime + 0.08);
+      gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.08, audioContext.currentTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.16);
+      oscillator.connect(gain);
+      gain.connect(audioContext.destination);
+      oscillator.start();
+      oscillator.stop(audioContext.currentTime + 0.16);
+      oscillator.addEventListener("ended", () => void audioContext.close());
+    } catch {}
+  }
 
   // Load only the current account's histories and monthly usage.
   useEffect(() => {
@@ -255,6 +292,7 @@ export default function ChatWindow() {
       if (data.reply) {
         const assistantMessage: Message = { role: "assistant", content: data.reply, file: null };
         setMessages([...updatedMessages, assistantMessage]);
+        playReplySound();
 
         // If the server returned a suggested title, update the active history
         if (data.title && activeHistoryId) {
@@ -321,7 +359,7 @@ export default function ChatWindow() {
   }
 
   return (
-    <div className="flex h-screen bg-neutral-950 text-white">
+    <div data-theme={theme} className="flex h-screen bg-neutral-950 text-white">
       <aside className={`fixed inset-y-0 left-0 z-40 w-72 transform border-r border-neutral-800 bg-neutral-900 p-4 transition-transform duration-200 md:static md:translate-x-0 ${isHistoryVisible ? 'md:block' : 'md:hidden'} ${isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"}`} aria-hidden={!isSidebarOpen && true}>
         <div className="flex h-full flex-col">
           <div className="mb-4">
@@ -410,6 +448,34 @@ export default function ChatWindow() {
                 Menu
               </button>
               <h2 className="text-lg font-semibold">Teller AI Chat</h2>
+            </div>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setIsThemeMenuOpen((open) => !open)}
+                className="rounded-md bg-neutral-800 px-3 py-2 text-sm"
+                aria-label="Change theme"
+                aria-expanded={isThemeMenuOpen}
+              >
+                Theme: {theme[0].toUpperCase() + theme.slice(1)}
+              </button>
+              {isThemeMenuOpen && (
+                <div className="absolute right-0 top-11 z-20 w-36 rounded-lg border border-neutral-700 bg-neutral-900 p-1 shadow-xl">
+                  {(["auto", "dark", "light"] as Theme[]).map((option) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => {
+                        setTheme(option);
+                        setIsThemeMenuOpen(false);
+                      }}
+                      className="block w-full rounded px-3 py-2 text-left text-sm capitalize hover:bg-neutral-800"
+                    >
+                      {option}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </header>
